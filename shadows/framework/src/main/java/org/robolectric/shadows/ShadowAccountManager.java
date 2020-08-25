@@ -360,6 +360,81 @@ public class ShadowAccountManager {
   }
 
   /**
+   * @param accountType An authenticator must exist for the accountType.
+   * @param authTokenType is ignored.
+   * @param requiredFeatures is ignored.
+   * @param options is ignored.
+   * @param activity if null, only {@link AccountManager#KEY_INTENT} will be present in result.
+   * @param callback if not null, will be called with result bundle.
+   * @param handler is ignored.
+   * @return future for bundle containing {@link AccountManager#KEY_ACCOUNT_SESSION_BUNDLE} if
+   *     activity is provided, or {@link AccountManager#KEY_INTENT} otherwise.
+   */
+  @Implementation(minSdk = O)
+  protected AccountManagerFuture<Bundle> startAddAccountSession(
+      String accountType,
+      String authTokenType,
+      String[] requiredFeatures,
+      Bundle options,
+      Activity activity,
+      AccountManagerCallback<Bundle> callback,
+      Handler handler) {
+
+    return start(
+        new BaseRoboAccountManagerFuture<Bundle>(callback, handler) {
+          @Override
+          public Bundle doWork()
+              throws OperationCanceledException, IOException, AuthenticatorException {
+            if (!authenticators.containsKey(accountType)) {
+              throw new AuthenticatorException("No authenticator specified for " + accountType);
+            }
+
+            Bundle resultBundle = new Bundle();
+
+            if (activity == null) {
+              Intent resultIntent = new Intent();
+              resultBundle.putParcelable(AccountManager.KEY_INTENT, resultIntent);
+            } else {
+              // This would actually be an encrypted bundle. Account type is copied as is simply to
+              // make it non-empty.
+              Bundle accountSessionBundle = new Bundle();
+              accountSessionBundle.putString(AccountManager.KEY_ACCOUNT_TYPE, accountType);
+              resultBundle.putBundle(AccountManager.KEY_ACCOUNT_SESSION_BUNDLE, Bundle.EMPTY);
+            }
+
+            return resultBundle;
+          }
+        });
+  }
+
+  /**
+   * Returns sessionBundle as the result of finishSession.
+   *
+   * @param sessionBundle is returned as the result bundle.
+   * @param activity is ignored.
+   * @param callback if not null, will be called with result bundle.
+   * @param handler is ignored.
+   */
+  @Implementation(minSdk = O)
+  protected AccountManagerFuture<Bundle> finishSession(
+      Bundle sessionBundle,
+      Activity activity,
+      AccountManagerCallback<Bundle> callback,
+      Handler handler) {
+
+    return start(
+        new BaseRoboAccountManagerFuture<Bundle>(callback, handler) {
+          @Override
+          public Bundle doWork()
+              throws OperationCanceledException, IOException, AuthenticatorException {
+            // Just return sessionBundle as the result since it's not really used, allowing it to
+            // be easily controlled in tests.
+            return sessionBundle;
+          }
+        });
+  }
+
+  /**
    * Based off of private method postToHandler(Handler, OnAccountsUpdateListener, Account[]) in
    * {@link AccountManager}
    */
